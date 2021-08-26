@@ -44,7 +44,7 @@ def main():
                     output.write(str(sents) + '\n')
 
         # to do: understand this part!!! --> handle bigrams
-        '''
+
         sentences = PathLineSentences(out_dir)
         phrases = Phrases(sentences, min_count=5, threshold=10)
         # print(list(phrases[sentences]))
@@ -58,7 +58,6 @@ def main():
                 for s in tokenized_sentences:
                     f.write('{}\n'.format(' '.join(s)))
                 f.truncate()
-        '''
 
 
 def get_sentences(text):
@@ -85,7 +84,7 @@ def prep(text):
                       strip_non_alphanum]
     document = preprocess_string(document, custom_filters)
     # gensim utils -> removes any letter accents from the given string
-    #deaccent(document)
+    # deaccent(document)
     return document
 
 
