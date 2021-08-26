@@ -1,13 +1,14 @@
 import logging
-import argparse
 import os
+import nltk
 import gensim
-from gensim.corpora import textcorpus
 from gensim.parsing.preprocessing import preprocess_string
 from gensim.parsing.preprocessing import remove_stopwords
 from gensim.parsing.preprocessing import strip_multiple_whitespaces
 from gensim.parsing.preprocessing import strip_punctuation
 from gensim.parsing.preprocessing import strip_non_alphanum
+from gensim.parsing.preprocessing import strip_short
+from gensim.utils import deaccent
 from gensim.models.word2vec import LineSentence
 from gensim.models.word2vec import PathLineSentences
 from gensim.models import Phrases
@@ -21,7 +22,7 @@ def main():
     top_directory = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/input_txt'
     # stream files from directory
     for root, dirnames, files in os.walk(top_directory):
-        #print(f'Found directory: {root}')
+        # print(f'Found directory: {root}')
         file_number = len(files)
         print('found', file_number, 'files')
 
@@ -29,20 +30,21 @@ def main():
             # read each document as one big string
             document = open(os.path.join(root, fname)).read()
 
-            # call functions for preprocessing
-            document = umlaute(document)
-            document = prep(document)
+            # call function to create new output directory
             out_dir = outp_dir()
-            # break document into utf8 tokens
-            #yield gensim.utils.tokenize(document, lower=True, errors='ignore')
+
+            # call function for preprocessing
+            document = get_sentences(document)
 
             # create filename for preprocessed original file and write processed data
             prep_file = out_dir + str(os.path.splitext(fname)[0]) + "_prep.txt"
             with open(prep_file, 'w+') as output:
-                for sentence in document:
-                    output.write(sentence + '\n')
-                    
-        # to do: understand this part!!!
+                for sents in document:
+                    sents = ' '.join(sents)
+                    output.write(str(sents) + '\n')
+
+        # to do: understand this part!!! --> handle bigrams
+        '''
         sentences = PathLineSentences(out_dir)
         phrases = Phrases(sentences, min_count=5, threshold=10)
         # print(list(phrases[sentences]))
@@ -56,15 +58,34 @@ def main():
                 for s in tokenized_sentences:
                     f.write('{}\n'.format(' '.join(s)))
                 f.truncate()
+        '''
 
-            # to do: one sentence per line
+
+def get_sentences(text):
+    document = text
+    # remove any newlines for sentence detection
+    document = document.replace('¬\n', '').strip()
+    document = document.replace('-\n', '')
+    document = document.replace('\n', ' ')
+    document = nltk.sent_tokenize(document, language='german')
+    processed = []
+    for sentences in document:
+        sentences = umlaute(sentences)
+        sentences = prep(sentences)
+        if len(sentences) > 1:
+            processed.append(sentences)
+
+    return processed
 
 
 def prep(text):
     document = text
+    # convert to lower, remove stopwords, multiple whitespaces, punctuation, anything non-alphanumeric, short words
     custom_filters = [lambda x: x.lower(), remove_stopwords, strip_multiple_whitespaces, strip_punctuation,
                       strip_non_alphanum]
     document = preprocess_string(document, custom_filters)
+    # gensim utils -> removes any letter accents from the given string
+    #deaccent(document)
     return document
 
 
@@ -74,6 +95,7 @@ def umlaute(text):
     document = document.replace('Ä', 'Ae').replace('Ö', 'Oe').replace('Ü', 'Ue')
     document = document.replace('ß', 'ss')
     document = document.replace('ſ', 's')
+
     return document
 
 
