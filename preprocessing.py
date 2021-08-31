@@ -8,7 +8,6 @@ from gensim.parsing.preprocessing import strip_multiple_whitespaces
 from gensim.parsing.preprocessing import strip_punctuation
 from gensim.parsing.preprocessing import strip_non_alphanum
 from gensim.parsing.preprocessing import strip_short
-from gensim.utils import deaccent
 from gensim.models.word2vec import LineSentence
 from gensim.models.word2vec import PathLineSentences
 from gensim.models import Phrases
@@ -47,7 +46,6 @@ def main():
 
         sentences = PathLineSentences(out_dir)
         phrases = Phrases(sentences, min_count=5, threshold=10)
-        # print(list(phrases[sentences]))
 
         filenames = os.listdir(out_dir)
         for file in filenames:
@@ -81,10 +79,9 @@ def prep(text):
     document = text
     # convert to lower, remove stopwords, multiple whitespaces, punctuation, anything non-alphanumeric, short words
     custom_filters = [lambda x: x.lower(), remove_stopwords, strip_multiple_whitespaces, strip_punctuation,
-                      strip_non_alphanum]
+                      strip_non_alphanum, strip_short]
     document = preprocess_string(document, custom_filters)
-    # gensim utils -> removes any letter accents from the given string
-    # deaccent(document)
+
     return document
 
 
@@ -111,5 +108,3 @@ logging.info('processed all files')
 
 if __name__ == '__main__':
     main()
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
