@@ -27,7 +27,7 @@ def outp_dir():
 
 def main():
     outp_path = outp_dir()
-    fname = outp_path + 'genism-model'
+    fname = outp_path + 'gensim-model'
     sentences = ModelInput('/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/prep_files')
     model = gensim.models.Word2Vec(sentences, min_count=5, vector_size=100, sg=0)
 
