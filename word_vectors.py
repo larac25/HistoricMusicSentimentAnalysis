@@ -10,8 +10,8 @@ from gensim.scripts import word2vec2tensor
 logging.basicConfig(level=logging.INFO)
 
 # load trained model
-# to do: correct file name of the model..
-wv_model = gensim.models.KeyedVectors.load_word2vec_format('/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/models/genism-model')
+
+wv_model = gensim.models.KeyedVectors.load_word2vec_format('/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/models/gensim-model')
 
 '''
 # get vectors for words from seed list
@@ -32,7 +32,7 @@ for vec in seed_vectors:
 print(wv_model.index_to_key[:100])
 
 # similar words for seed words of seed word list
-seed_words = ['anmuthig', 'brütend', 'düster', 'ergreifend', 'feurig', 'leidenschaftlich', 'trotzig', 'trüb', 'wild']
+seed_words = ['anmuthig', 'bruetend', 'duester', 'ergreifend', 'feurig', 'leidenschaftlich', 'trotzig', 'trueb', 'wild']
 seeds = []  # store most similar words (for tensorflow viz)
 
 for word in seed_words:
@@ -42,6 +42,9 @@ for word in seed_words:
 
         for sim in similar:
             seeds.append(sim[0])  # only store the key (the str)
+
+            # für neue Wörter aus der seed_words liste ebenfalls most similar Wörter suchen --> Anzahl Durchläufe fixen
+            # oder andere Methode testen? Z.B. über Entfernung
 
     else:
         print('Could not find any similar words!')
@@ -53,15 +56,15 @@ for w in seed_words:
 
 kv = KeyedVectors(vector_size=wv_model.vector_size)  # create new (empty) KeyedVectors object
 kv.add_vectors(seed_words, seed_vectors)  # add vectors from above
-kv.save_word2vec_format(fname='/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/models/seed_vectors')
+# save new keyed vetors
+kv.save_word2vec_format(fname='/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/models/seed_vectors_new')
 
 # visualize word vectors
-'''
-vocab = list(wv_model.key_to_index)
-X = wv_model[vocab]
+most_sim_model = gensim.models.KeyedVectors.load_word2vec_format('/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/models/seed_vectors_new')
+vocab = list(most_sim_model.key_to_index)
+X = most_sim_model[vocab]
 tsne = TSNE(n_components=2)
-X_tsne = tsne.fit_transform(X[:1000,:])
+X_tsne = tsne.fit_transform(X[:1000, :])
 
 plt.scatter(X_tsne[:, 0], X_tsne[:, 1])
 plt.show()
-'''

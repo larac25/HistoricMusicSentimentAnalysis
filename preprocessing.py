@@ -1,6 +1,7 @@
 import logging
 import os
 import nltk
+from nltk.corpus import stopwords
 import gensim
 from gensim.parsing.preprocessing import preprocess_string
 from gensim.parsing.preprocessing import remove_stopwords
@@ -32,6 +33,9 @@ def main():
             # call function to create new output directory
             out_dir = outp_dir()
 
+            # call function to remove german stopwords
+            document = stopwords(document)
+
             # call function for preprocessing
             document = get_sentences(document)
 
@@ -42,7 +46,7 @@ def main():
                     sents = ' '.join(sents)
                     output.write(str(sents) + '\n')
 
-        # to do: understand this part!!! --> handle bigrams
+        # handle bigrams
 
         sentences = PathLineSentences(out_dir)
         phrases = Phrases(sentences, min_count=5, threshold=10)
@@ -64,21 +68,36 @@ def get_sentences(text):
     document = document.replace('¬\n', '').strip()
     document = document.replace('-\n', '')
     document = document.replace('\n', ' ')
-    document = nltk.sent_tokenize(document, language='german')
+    document = nltk.sent_tokenize(document, language='german')  # tokenization
+
     processed = []
+
     for sentences in document:
         sentences = umlaute(sentences)
         sentences = prep(sentences)
+
         if len(sentences) > 1:
             processed.append(sentences)
 
     return processed
 
 
+def stopwords(text):
+    document = text
+    stop_words = nltk.corpus.stopwords.words('german')
+    for sentence in document:
+        # remove german stopwords
+        words = nltk.word_tokenize(sentence)
+        words = [x for x in words if x not in stop_words]
+        sentence = ' '.join(words)
+
+    return document
+
+
 def prep(text):
     document = text
-    # convert to lower, remove stopwords, multiple whitespaces, punctuation, anything non-alphanumeric, short words
-    custom_filters = [lambda x: x.lower(), remove_stopwords, strip_multiple_whitespaces, strip_punctuation,
+    # convert to lower, remove multiple whitespaces, punctuation, anything non-alphanumeric, short words
+    custom_filters = [lambda x: x.lower(), strip_multiple_whitespaces, strip_punctuation,
                       strip_non_alphanum, strip_short]
     document = preprocess_string(document, custom_filters)
 
