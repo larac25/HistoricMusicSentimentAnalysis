@@ -2,9 +2,7 @@ import logging
 import os
 import nltk
 from nltk.corpus import stopwords
-import gensim
 from gensim.parsing.preprocessing import preprocess_string
-from gensim.parsing.preprocessing import remove_stopwords
 from gensim.parsing.preprocessing import strip_multiple_whitespaces
 from gensim.parsing.preprocessing import strip_punctuation
 from gensim.parsing.preprocessing import strip_non_alphanum
@@ -34,7 +32,7 @@ def main():
             out_dir = outp_dir()
 
             # call function to remove german stopwords
-            document = stopwords(document)
+            document = remove_sw(document)
 
             # call function for preprocessing
             document = get_sentences(document)
@@ -82,14 +80,15 @@ def get_sentences(text):
     return processed
 
 
-def stopwords(text):
+def remove_sw(text):
     document = text
-    stop_words = nltk.corpus.stopwords.words('german')
+    stop_words = stopwords.words('german')
     for sentence in document:
         # remove german stopwords
         words = nltk.word_tokenize(sentence)
         words = [x for x in words if x not in stop_words]
         sentence = ' '.join(words)
+        # todo: fix
 
     return document
 
