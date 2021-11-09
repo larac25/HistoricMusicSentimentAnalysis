@@ -1,16 +1,19 @@
 import logging
 import os
+import random
+
 import pandas as pd
 import pickle
 import matplotlib.pyplot as plt
 import seaborn as sns
-sns.set_style('whitegrid')
-import altair as alt
-alt.renderers.enable('altair_viewer')
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.feature_selection import chi2
 import numpy as np
+import altair as alt
+sns.set_style('whitegrid')
+alt.renderers.enable('altair_viewer')
+
 
 training_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/train_1/'
 test_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/test_1/'
@@ -20,37 +23,67 @@ final_test_df = os.path.join(test_path, 'test_df.csv')
 
 if not os.path.exists(final_train_df):
 
-    # merge train cvs files into one big dataframe
-    train_list = []
+    data_size = input('use half of the data? y / n')
 
-    for train in os.listdir(training_path):
-        tr = pd.read_csv(os.path.join(training_path, train), index_col=0)
-        train_list.append(tr)
+    if data_size == 'n':
 
-    # final training dataframe which includes all csv files from train files
-    train_df = pd.concat(train_list)
+        # merge train cvs files into one big dataframe
+        train_list = []
 
-    test_list = []
+        for train in os.listdir(training_path):
+            tr = pd.read_csv(os.path.join(training_path, train), index_col=0)
+            train_list.append(tr)
 
-    for test in os.listdir(test_path):
-        te = pd.read_csv(os.path.join(test_path, test), index_col=0)
-        test_list.append(te)
+        # final training dataframe which includes all csv files from train files
+        train_df = pd.concat(train_list)
 
-    # final test dataframe which includes all csv files from test files
-    test_df = pd.concat(test_list)
+        test_list = []
 
-    # save final dataframes for training and testing
-    with open(os.path.join(training_path, 'train_df.csv'), 'w') as out_train_df:
-        train_df.to_csv(out_train_df)
+        for test in os.listdir(test_path):
+            te = pd.read_csv(os.path.join(test_path, test), index_col=0)
+            test_list.append(te)
 
-    with open(os.path.join(test_path, 'test_df.csv'), 'w') as out_test_df:
-        test_df.to_csv(out_test_df)
+        # final test dataframe which includes all csv files from test files
+        test_df = pd.concat(test_list)
+
+        # save final dataframes for training and testing
+        with open(os.path.join(training_path, 'train_df.csv'), 'w') as out_train_df:
+            train_df.to_csv(out_train_df)
+
+        with open(os.path.join(test_path, 'test_df.csv'), 'w') as out_test_df:
+            test_df.to_csv(out_test_df)
+
+    if data_size == 'y':
+
+        # randomly sample half of the data
+        train_files = random.sample(os.listdir(training_path), 1000)
+        # merge train cvs files into one big dataframe
+        half_train_list = []
+
+        for half_train in train_files:
+            half_tr = pd.read_csv(os.path.join(training_path, half_train), index_col=0)
+            half_train_list.append(half_tr)
+
+        # final training dataframe which includes all csv files from train files
+        half_train_df = pd.concat(half_train_list)
+
+        # save final dataframes for training and testing
+        with open(os.path.join(training_path, 'train_df.csv'), 'w') as out_half_df:
+            half_train_df.to_csv(out_half_df)
+
 
 else:
     print('The final dataframes have already been created. Processing with label coding..')
 
     train_df = pd.read_csv(final_train_df, index_col=0)
-    test_df = pd.read_csv(final_test_df)
+#    test_df = pd.read_csv(final_test_df)
+
+
+row_count = train_df.count()
+word_count = [len(x.split()) for x in train_df['text'].tolist()]
+print(row_count)
+print(word_count)
+
 
 viz = input('do you want to plot the visualisation? y / n')
 
@@ -60,6 +93,7 @@ if viz == 'y':
     alt.data_transformers.disable_max_rows()
 
     # the visualisation shows that the dataset is not balanced --> sentences without a label occur extremely often
+    # sentences without a label should be considered when training the classifier
     bars = alt.Chart(train_df).mark_bar(size=50).encode(
         x=alt.X("label"),
         y=alt.Y("count():Q", axis=alt.Axis(title='Number of sentences')),
@@ -113,15 +147,35 @@ train_df = train_df.replace({'label_code': label_codes})
 x_train, x_test, y_train, y_test = train_test_split(train_df['text'], train_df['label_code'],
                                                     test_size=0.20, random_state=10)
 
+
+# generator to stream training data in tfidf-vectorizer
+def ChunkIterator(filename):
+    for chunk in filename.iteritems():
+        yield chunk
+
+
 # use TF-IDF Vectors as features
-tfidf = TfidfVectorizer(encoding='utf-8', ngram_range=(1,2), min_df=5)
-features_train = tfidf.fit_transform(x_train).toarray()
+tfidf = TfidfVectorizer(encoding='utf-8', ngram_range=(1, 2), min_df=5)
+features_train = tfidf.fit_transform(list(zip(*ChunkIterator(x_train)))[1]).toarray()
 labels_train = y_train
 print(features_train.shape)
 
-features_test = tfidf.transform(x_test).toarray()
+features_test = tfidf.transform(list(zip(*ChunkIterator(x_test)))[1]).toarray()
 labels_test = y_test
 print(features_test.shape)
+
+# use the Chi squared test in order to see what unigrams and bigrams are most correlated with each category
+# not working --> SIGKILL
+for Product, label_id in sorted(label_codes.items()):
+    features_chi2 = chi2(features_train, labels_train == label_id)
+    indices = np.argsort(features_chi2[0])
+    feature_names = np.array(tfidf.get_feature_names())[indices]
+    unigrams = [v for v in feature_names if len(v.split(' ')) == 1]
+    bigrams = [v for v in feature_names if len(v.split(' ')) == 2]
+    print("# '{}' label:".format(Product))
+    print("  . Most correlated unigrams:\n. {}".format('\n. '.join(unigrams[-5:])))
+    print("  . Most correlated bigrams:\n. {}".format('\n. '.join(bigrams[-2:])))
+    print("")
 
 # todo: Predictive Model
 
