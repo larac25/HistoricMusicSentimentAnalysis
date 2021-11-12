@@ -10,6 +10,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.feature_selection import chi2
 import numpy as np
+from sklearn import svm
+from sklearn.linear_model import SGDClassifier
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 import altair as alt
 sns.set_style('whitegrid')
 alt.renderers.enable('altair_viewer')
@@ -23,7 +26,7 @@ final_test_df = os.path.join(test_path, 'test_df.csv')
 
 if not os.path.exists(final_train_df):
 
-    data_size = input('use half of the data? y / n')
+    data_size = input('use less of the data? (to prevent memory issues) y / n')
 
     if data_size == 'n':
 
@@ -56,7 +59,7 @@ if not os.path.exists(final_train_df):
     if data_size == 'y':
 
         # randomly sample half of the data
-        train_files = random.sample(os.listdir(training_path), 1000)
+        train_files = random.sample(os.listdir(training_path), 150)
         # merge train cvs files into one big dataframe
         half_train_list = []
 
@@ -70,6 +73,8 @@ if not os.path.exists(final_train_df):
         # save final dataframes for training and testing
         with open(os.path.join(training_path, 'train_df.csv'), 'w') as out_half_df:
             half_train_df.to_csv(out_half_df)
+
+        train_df = pd.read_csv(final_train_df, index_col=0)
 
 
 else:
@@ -158,14 +163,64 @@ def ChunkIterator(filename):
 tfidf = TfidfVectorizer(encoding='utf-8', ngram_range=(1, 2), min_df=5)
 features_train = tfidf.fit_transform(list(zip(*ChunkIterator(x_train)))[1]).toarray()
 labels_train = y_train
-print(features_train.shape)
+print('features_train:', features_train.shape)
 
 features_test = tfidf.transform(list(zip(*ChunkIterator(x_test)))[1]).toarray()
 labels_test = y_test
-print(features_test.shape)
+print('features_test:', features_test.shape)
+
+# save data, features and tfidf-object
+pickle_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/pickle'
+
+if not os.path.exists(pickle_path):
+    os.makedirs(pickle_path)
+
+'''
+# X_train
+with open(os.path.join(pickle_path, 'x_train.pickle'), 'wb') as output:
+    pickle.dump(x_train, output)
+
+# X_test
+with open(os.path.join(pickle_path, 'x_test.pickle'), 'wb') as output:
+    pickle.dump(x_test, output)
+
+# y_train
+with open(os.path.join(pickle_path, 'y_train.pickle'), 'wb') as output:
+    pickle.dump(y_train, output)
+
+# y_test
+with open(os.path.join(pickle_path, 'y_test.pickle'), 'wb') as output:
+    pickle.dump(y_test, output)
+
+# df
+with open(os.path.join(pickle_path, 'df.pickle'), 'wb') as output:
+    pickle.dump(train_df, output)
+
+# features_train
+with open(os.path.join(pickle_path, 'features_train.pickle'), 'wb') as output:
+    pickle.dump(features_train, output)
+
+# labels_train
+with open(os.path.join(pickle_path, 'labels_train.pickle'), 'wb') as output:
+    pickle.dump(labels_train, output)
+
+# features_test
+with open(os.path.join(pickle_path, 'features_test.pickle'), 'wb') as output:
+    pickle.dump(features_test, output)
+
+# labels_test
+with open(os.path.join(pickle_path, 'labels_test.pickle'), 'wb') as output:
+    pickle.dump(labels_test, output)
+
+# TF-IDF object
+with open(os.path.join(pickle_path, 'tfidf.pickle'), 'wb') as output:
+    pickle.dump(tfidf, output)
+    
+'''
 
 # use the Chi squared test in order to see what unigrams and bigrams are most correlated with each category
-# not working --> SIGKILL
+# not working --> SIGKILL 9
+
 for Product, label_id in sorted(label_codes.items()):
     features_chi2 = chi2(features_train, labels_train == label_id)
     indices = np.argsort(features_chi2[0])
@@ -177,8 +232,33 @@ for Product, label_id in sorted(label_codes.items()):
     print("  . Most correlated bigrams:\n. {}".format('\n. '.join(bigrams[-2:])))
     print("")
 
-# todo: Predictive Model
+# Predictive Model (SVM)
+clf = svm.LinearSVC()
 
-# todo: Evaluation
+clf.fit(features_train, labels_train)
 
-# todo: save model
+# Evaluation
+
+# accuracy score
+print(accuracy_score(labels_test, clf.predict(features_test)))
+
+# classification report
+print(classification_report(labels_test, clf.predict(features_test)))
+
+# confusion matrix
+aux_df = train_df[['label', 'label_code']].drop_duplicates().sort_values('label_code')
+conf_matrix = confusion_matrix(labels_test, clf.predict(features_test))
+plt.figure(figsize=(12.8, 6))
+sns.heatmap(conf_matrix,
+            annot=True,
+            xticklabels=aux_df['label'].values,
+            yticklabels=aux_df['label'].values,
+            cmap="Blues")
+plt.ylabel('Predicted')
+plt.xlabel('Actual')
+plt.title('Confusion matrix')
+plt.show()
+
+# save model
+with open(os.path.join(pickle_path, 'clf.pickle'), 'wb') as output:
+    pickle.dump(clf, output)
