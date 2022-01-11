@@ -31,9 +31,6 @@ def main():
             # call function to create new output directory
             out_dir = outp_dir()
 
-            # call function to remove german stopwords
-            document = remove_sw(document)
-
             # call function for preprocessing
             document = get_sentences(document)
 
@@ -41,11 +38,10 @@ def main():
             prep_file = out_dir + str(os.path.splitext(fname)[0]) + "_prep.txt"
             with open(prep_file, 'w+') as output:
                 for sents in document:
-                    sents = ' '.join(sents)
                     output.write(str(sents) + '\n')
 
-        # handle bigrams
-
+        # handle line splitting -> one sentence per line
+        # handle n-grams
         sentences = PathLineSentences(out_dir)
         phrases = Phrases(sentences, min_count=5, threshold=10)
 
@@ -68,29 +64,21 @@ def get_sentences(text):
     document = document.replace('\n', ' ')
     document = nltk.sent_tokenize(document, language='german')  # tokenization
 
+    stop_words = stopwords.words('german')
     processed = []
 
     for sentences in document:
         sentences = umlaute(sentences)
         sentences = prep(sentences)
 
+        # remove german stopwords
+        sentences = [x for x in sentences if x not in stop_words]
+        sentences = ' '.join(sentences)
+
         if len(sentences) > 1:
             processed.append(sentences)
 
     return processed
-
-
-def remove_sw(text):
-    document = text
-    stop_words = stopwords.words('german')
-    for sentence in document:
-        # remove german stopwords
-        words = nltk.word_tokenize(sentence)
-        words = [x for x in words if x not in stop_words]
-        sentence = ' '.join(words)
-        # todo: fix
-
-    return document
 
 
 def prep(text):
