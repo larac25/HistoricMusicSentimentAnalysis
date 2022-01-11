@@ -36,7 +36,7 @@ def main():
 
             # create filename for preprocessed original file and write processed data
             prep_file = out_dir + str(os.path.splitext(fname)[0]) + "_prep.txt"
-            with open(prep_file, 'w+') as output:
+            with open(prep_file, 'w+', encoding='utf-8') as output:
                 for sents in document:
                     output.write(str(sents) + '\n')
 
