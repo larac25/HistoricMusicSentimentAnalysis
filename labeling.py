@@ -4,7 +4,6 @@ import os.path
 import shutil
 import random
 import pandas as pd
-import pickle
 import csv
 
 
@@ -13,51 +12,62 @@ logging.basicConfig(level=logging.INFO)
 
 # new directory to store labelled data
 def outp_dir():
-    outp_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/'
+    outp_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/'
     if not os.path.exists(outp_path):
         os.makedirs(outp_path)
 
     return outp_path
 
 
-# split data into training and validation set
+# split data because of RAM Issues
 def split_data():
-    # extract training data
-    # leave some of the data for testing
-    # new folders: train & test
-    input_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/'
-    train_files = random.sample(os.listdir(input_folder), 8414)  # randomly sample approx. 80% of all files for training
-    train_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/train/'
-    test_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/test/'
+    # extract 50% of the new corpus for each labeling process
+    # new folders: word2vec & fasttext
+    input_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/'
+    split_files = random.sample(os.listdir(input_folder), 2629)
+    wv_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/word2vec/'
+    ft_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/fasttext/'
 
-    # check if 'train' folder already exists
-    if not os.path.exists(train_folder):
-        os.makedirs(train_folder)
+    # check if wv_folder already exists
+    if not os.path.exists(wv_folder):
+        os.makedirs(wv_folder)
 
-        # move randomly selected files to new train folder
-        for train in train_files:
-            old_path = os.path.join(input_folder, train)
-            shutil.move(old_path, train_folder)
+        # move randomly selected files to new folder
+        for wv_files in split_files:
+            old_path = os.path.join(input_folder, wv_files)
+            shutil.move(old_path, wv_folder)
 
-    # check if 'test' folder already exists
-    if not os.path.exists(test_folder):
-        os.makedirs(test_folder)
+    # check if ft_folder already exists
+    if not os.path.exists(ft_folder):
+        os.makedirs(ft_folder)
 
-        # these are the files left from the splitting (20% from the whole set)
-        test_files = os.listdir(input_folder)
+        # these are the files left from the splitting
+        ft_files = os.listdir(input_folder)
 
         # move all csv files to new test folder
-        for test in filter(lambda test: test.endswith('.csv'), test_files):  # only consider csv
-            # --> otherwise the 'train' folder is moved, too
+        for test in filter(lambda test: test.endswith('.csv'), ft_files):  # only consider csv
+            # --> otherwise the wv_folder is moved, too
             old_p = os.path.join(input_folder, test)
-            shutil.move(old_p, test_folder)
+            shutil.move(old_p, ft_folder)
 
 
 # string-matching-algorithm to label sentences with seed word categories
 def label_data():
-    # load training data and emotion lexicon
-    data = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/train/'
-    label = pd.read_pickle('/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/label.pkl')
+
+    label_inpput = input('which embeddings for labeling? wv = word2vec; ft = fasttext')
+
+    if label_inpput == 'wv':
+
+        # load word2vec data and word2vec generated emotion lexicon
+        data = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/word2vec/'
+        label = pd.read_pickle('/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/label_wv.pkl')
+
+    elif label_inpput == 'ft':
+
+        # load fasttext data and fasttext generated emotion lexicon
+        data = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/fasttext/'
+        label = pd.read_pickle('/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/label_ft.pkl')
+
 
     # read csv files as stream
     for root_name, dir_n, csv_files in os.walk(data):
@@ -89,7 +99,7 @@ def label_data():
                     f_df.to_csv(labelled_file)
 
 
-# read data as stream and convert to csv
+# read data as stream and convert 50% of it to csv (only 50% because of RAM issues)
 raw_data = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/prep_files/'
 csv_path = outp_dir()
 
@@ -100,6 +110,8 @@ if len(os.listdir(csv_path)) == 0:
         print(f'Found directory: {root}')
         file_number = len(files)
         print('found', file_number, 'files')
+
+        files = random.sample(os.listdir(raw_data), 5258)
 
         for filename in files:
             # create output directory and filename for processed files

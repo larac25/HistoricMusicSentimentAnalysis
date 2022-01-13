@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 logging.basicConfig(level=logging.INFO)
 
 
-# new directory to store label-thesaurus
+# new directory to store label-lexicon
 def outp_dir():
     outp_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/'
     if not os.path.exists(outp_path):
@@ -44,7 +44,7 @@ if switch == 'wv':
         if word in wv_model.index_to_key:
 
             # gensim.word2vec built in function
-            similar = wv_model.most_similar(positive=word, topn=25)
+            similar = wv_model.most_similar(positive=word, topn=50)
             print(word, ':', similar)
 
             similar_str = []
@@ -108,7 +108,7 @@ elif switch == 'ft':
 
         if word in ft_model.index_to_key:
 
-            similar = ft_model.most_similar(positive=word, topn=25)
+            similar = ft_model.most_similar(positive=word, topn=50)
             print(word, ':', similar)
 
             similar_str = []
