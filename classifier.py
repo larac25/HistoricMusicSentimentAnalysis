@@ -1,15 +1,9 @@
-import logging
 import os
 import random
 import pandas as pd
 import pickle
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.model_selection import train_test_split
-from sklearn.feature_selection import chi2
-import numpy as np
-from sklearn import svm
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 import altair as alt
 sns.set_style('whitegrid')
@@ -24,12 +18,20 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.svm import SVC
 from sklearn.svm import LinearSVC
 
+clf_input = input('which labelled data? wv = labelled data with word2vec embeddings; ft = labelled data with fasttext embeddings')
 
-training_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/train_1/'
-test_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/test_1/'
+if clf_input == 'wv':
+
+    training_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/word2vec/'
+    #test_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/word2vec/'
+
+elif clf_input == 'ft':
+
+    training_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/fasttext/'
+    #test_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/fasttext/'
 
 final_train_df = os.path.join(training_path, 'train_df.csv')
-final_test_df = os.path.join(test_path, 'test_df.csv')
+#final_test_df = os.path.join(test_path, 'test_df.csv')
 
 if not os.path.exists(final_train_df):
 
@@ -47,6 +49,11 @@ if not os.path.exists(final_train_df):
         # final training dataframe which includes all csv files from train files
         train_df = pd.concat(train_list)
 
+        # save final dataframe for training
+        with open(os.path.join(training_path, 'train_df.csv'), 'w') as out_train_df:
+            train_df.to_csv(out_train_df)
+
+        '''
         test_list = []
 
         for test in os.listdir(test_path):
@@ -55,27 +62,24 @@ if not os.path.exists(final_train_df):
 
         # final test dataframe which includes all csv files from test files
         test_df = pd.concat(test_list)
-
-        # save final dataframes for training and testing
-        with open(os.path.join(training_path, 'train_df.csv'), 'w') as out_train_df:
-            train_df.to_csv(out_train_df)
-
+        
         with open(os.path.join(test_path, 'test_df.csv'), 'w') as out_test_df:
             test_df.to_csv(out_test_df)
+        '''
 
     if data_size == 'y':
 
-        # randomly sample half of the data
+        # randomly sample x files due to memory issues
         train_files = random.sample(os.listdir(training_path), 150)
         # merge train csv files into one big dataframe
-        half_train_list = []
+        less_files_list = []
 
-        for half_train in train_files:
-            half_tr = pd.read_csv(os.path.join(training_path, half_train), index_col=0)
-            half_train_list.append(half_tr)
+        for less_files in train_files:
+            less_tr = pd.read_csv(os.path.join(training_path, less_files), index_col=0)
+            less_files_list.append(less_tr)
 
         # final training dataframe which includes all csv files from train files
-        half_train_df = pd.concat(half_train_list)
+        half_train_df = pd.concat(less_files_list)
 
         # save final dataframes for training and testing
         with open(os.path.join(training_path, 'train_df.csv'), 'w') as out_half_df:
@@ -89,12 +93,6 @@ else:
 
     train_df = pd.read_csv(final_train_df, index_col=0)
 #    test_df = pd.read_csv(final_test_df)
-
-
-row_count = train_df.count()
-word_count = [len(x.split()) for x in train_df['text'].tolist()]
-#print(row_count)
-#print(word_count)
 
 
 viz = input('do you want to plot the visualisation? y / n')
@@ -129,139 +127,71 @@ if viz == 'y':
     )
 
     bars.show()
-    bars.save('data_viz.html')
 
 if viz == 'n':
     pass
 
-cl_input = input('Multiclass or binary classifier? multi/binary')
+cl_input = input('sentiment or binary classifier? sentiment/binary')
 
-if cl_input == 'multi':
+# save data, features and tfidf-object
+pickle_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/pickle'
+
+if not os.path.exists(pickle_path):
+    os.makedirs(pickle_path)
+
+if cl_input == 'sentiment':
     # label coding
-    train_df['label'] = train_df['label'].fillna(value=0)
-    # --> 0-9 (0 = nan, 1-9 = categories)
+    # --> -1 to 1 (-1 = negative,  0 = no label, 1 = positive)
+    train_df.drop(columns='label', inplace=True, axis=1)
+    train_df['sentiment'] = train_df['sentiment'].fillna(value=0)
     label_codes = {
-        'anmuthig': 1,
-        'bruetend': 2,
-        'duester': 3,
-        'ergreifend': 4,
-        'feurig': 5,
-        'leidenschaftlich': 6,
-        'trotzig': 7,
-        'trueb': 8,
-        'wild': 9
+        'p': 1,
+        'n': -1,
     }
 
     # label mapping
-    train_df['label_code'] = train_df['label']
+    train_df['label_code'] = train_df['sentiment']
     train_df = train_df.replace({'label_code': label_codes})
 
-    # Feature Engineering
-    # train / test splitting
+    # Pipeline fasst Prozess zusammen: Vektorisieren --> Transformieren --> Klassifizieren
+    text_clf = Pipeline([('vect', CountVectorizer()),
+                         ('tfidf', TfidfTransformer()),
+                         ('clf', LinearSVC(multi_class='ovr'))])
+
+    # Parameter für Grid Search festlegen
+    tuned_parameters = {
+        'vect__ngram_range': [(1, 2), (1, 3), (1, 4)],
+        'tfidf__use_idf': (True, False),
+        'clf__tol': [1, 1e-1, 1e-2, 1e-3]
+    }
+
+    # Datenset splitten
     x_train, x_test, y_train, y_test = train_test_split(train_df['text'], train_df['label_code'],
-                                                        test_size=0.20, random_state=10)
+                                                        test_size=0.2, shuffle=True, random_state=10)
 
-    # generator to stream training data in tfidf-vectorizer
-    def ChunkIterator(filename):
-        for chunk in filename.iteritems():
-            yield chunk
+    clf = GridSearchCV(text_clf, tuned_parameters, cv=10)
 
+    # Modell trainieren
+    clf.fit(x_train, y_train)
 
-    # use TF-IDF Vectors as features
-    tfidf = TfidfVectorizer(encoding='utf-8', ngram_range=(1, 2), min_df=5)
-    features_train = tfidf.fit_transform(list(zip(*ChunkIterator(x_train)))[1]).toarray()
-    labels_train = y_train
-    print('features_train:', features_train.shape)
+    # classification report für Analyse mit SVM
+    print(classification_report(y_test, clf.predict(x_test), digits=4))
 
-    features_test = tfidf.transform(list(zip(*ChunkIterator(x_test)))[1]).toarray()
-    labels_test = y_test
-    print('features_test:', features_test.shape)
+    # Accuracy für Analyse mit SVM
+    print(accuracy_score(y_test, clf.predict(x_test)))
 
-    # save data, features and tfidf-object
-    pickle_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/pickle'
-
-    if not os.path.exists(pickle_path):
-        os.makedirs(pickle_path)
-
-    '''
-    # X_train
-    with open(os.path.join(pickle_path, 'x_train.pickle'), 'wb') as output:
-        pickle.dump(x_train, output)
-    
-    # X_test
-    with open(os.path.join(pickle_path, 'x_test.pickle'), 'wb') as output:
-        pickle.dump(x_test, output)
-    
-    # y_train
-    with open(os.path.join(pickle_path, 'y_train.pickle'), 'wb') as output:
-        pickle.dump(y_train, output)
-    
-    # y_test
-    with open(os.path.join(pickle_path, 'y_test.pickle'), 'wb') as output:
-        pickle.dump(y_test, output)
-    
-    # df
-    with open(os.path.join(pickle_path, 'df.pickle'), 'wb') as output:
-        pickle.dump(train_df, output)
-    
-    # features_train
-    with open(os.path.join(pickle_path, 'features_train.pickle'), 'wb') as output:
-        pickle.dump(features_train, output)
-    
-    # labels_train
-    with open(os.path.join(pickle_path, 'labels_train.pickle'), 'wb') as output:
-        pickle.dump(labels_train, output)
-    
-    # features_test
-    with open(os.path.join(pickle_path, 'features_test.pickle'), 'wb') as output:
-        pickle.dump(features_test, output)
-    
-    # labels_test
-    with open(os.path.join(pickle_path, 'labels_test.pickle'), 'wb') as output:
-        pickle.dump(labels_test, output)
-    
-    # TF-IDF object
-    with open(os.path.join(pickle_path, 'tfidf.pickle'), 'wb') as output:
-        pickle.dump(tfidf, output)
-        
-    '''
-
-    # use the Chi squared test in order to see what unigrams and bigrams are most correlated with each category
-    # not working --> SIGKILL 9
-
-    for Product, label_id in sorted(label_codes.items()):
-        features_chi2 = chi2(features_train, labels_train == label_id)
-        indices = np.argsort(features_chi2[0])
-        feature_names = np.array(tfidf.get_feature_names())[indices]
-        unigrams = [v for v in feature_names if len(v.split(' ')) == 1]
-        bigrams = [v for v in feature_names if len(v.split(' ')) == 2]
-        print("# '{}' label:".format(Product))
-        print("  . Most correlated unigrams:\n. {}".format('\n. '.join(unigrams[-5:])))
-        print("  . Most correlated bigrams:\n. {}".format('\n. '.join(bigrams[-2:])))
-        print("")
-
-    # Predictive Model (SVM)
-    #clf = svm.LinearSVC()
-    clf = svm.SVC(kernel='linear', decision_function_shape='ovr')
-
-    clf.fit(features_train, labels_train)
-
-    # Evaluation
-
-    # accuracy score
-    print(accuracy_score(labels_test, clf.predict(features_test)))
-
-    # classification report
-    print(classification_report(labels_test, clf.predict(features_test)))
+    # Ausgabe der besten Parameter
+    print("Best Score: ", clf.best_score_)
+    print("Best Params: ", clf.best_params_)
 
     # confusion matrix
-    aux_df = train_df[['label', 'label_code']].drop_duplicates().sort_values('label_code')
-    conf_matrix = confusion_matrix(labels_test, clf.predict(features_test), normalize='true')
+    aux_df = train_df[['sentiment', 'label_code']].drop_duplicates().sort_values('label_code')
+    conf_matrix = confusion_matrix(y_test, clf.predict(x_test), normalize='true')
     plt.figure(figsize=(12.8, 6))
     sns.heatmap(conf_matrix,
                 annot=True,
-                xticklabels=aux_df['label'].values,
-                yticklabels=aux_df['label'].values,
+                xticklabels=aux_df['sentiment'].values,
+                yticklabels=aux_df['sentiment'].values,
                 cmap="Blues")
     plt.ylabel('Predicted')
     plt.xlabel('Actual')
@@ -269,18 +199,19 @@ if cl_input == 'multi':
     plt.show()
 
     # save model
-    with open(os.path.join(pickle_path, 'clf.pickle'), 'wb') as output:
+    with open(os.path.join(pickle_path, 'multi_clf.pickle'), 'wb') as output:
         pickle.dump(clf, output)
 
 
 if cl_input == 'binary':
 
     # label coding
-    train_df['label'] = train_df['label'].fillna(value=0)
     # (0 = no label, 1 = any label present)
-    train_df['label'][~train_df['label'].isin([0])] = 'sentiment'
+    train_df.drop(columns='sentiment', inplace=True, axis=1)
+    train_df['label'] = train_df['label'].fillna(value=0)
+    train_df['label'][~train_df['label'].isin([0])] = 'labelled'
     label_codes = {
-        'sentiment': 1,
+        'labelled': 1,
     }
 
     # label mapping
@@ -301,7 +232,7 @@ if cl_input == 'binary':
 
     # Datenset splitten
     x_train, x_test, y_train, y_test = train_test_split(train_df['text'], train_df['label_code'],
-                                                        test_size=0.2, shuffle=True)
+                                                        test_size=0.2, shuffle=True, random_state=10)
 
     clf = GridSearchCV(text_clf, tuned_parameters, cv=10)
 
@@ -318,44 +249,9 @@ if cl_input == 'binary':
     print("Best Score: ", clf.best_score_)
     print("Best Params: ", clf.best_params_)
 
-'''
-    # Feature Engineering
-    # train / test splitting
-    x_train, x_test, y_train, y_test = train_test_split(train_df['text'], train_df['label_code'],
-                                                        test_size=0.20, random_state=10)
-
-    # generator to stream training data in tfidf-vectorizer
-    def ChunkIterator(filename):
-        for chunk in filename.iteritems():
-            yield chunk
-
-
-    # use TF-IDF Vectors as features
-    tfidf = TfidfVectorizer(encoding='utf-8', ngram_range=(1, 2), min_df=5)
-    features_train = tfidf.fit_transform(x_train)
-    labels_train = y_train
-    print('features_train:', features_train.shape)
-
-    features_test = tfidf.transform(x_test)
-    labels_test = y_test
-    print('features_test:', features_test.shape)
-
-    # Predictive Model (SVM)
-    binary_clf = svm.SVC(kernel='linear')
-
-    binary_clf.fit(features_train, labels_train)
-
-    # Evaluation
-
-    # accuracy score
-    print(accuracy_score(labels_test, binary_clf.predict(features_test)))
-
-    # classification report
-    print(classification_report(labels_test, binary_clf.predict(features_test)))
-
     # confusion matrix
     aux_df = train_df[['label', 'label_code']].drop_duplicates().sort_values('label_code')
-    conf_matrix = confusion_matrix(labels_test, binary_clf.predict(features_test), normalize='true')
+    conf_matrix = confusion_matrix(y_test, clf.predict(x_test), normalize='true')
     plt.figure(figsize=(12.8, 6))
     sns.heatmap(conf_matrix,
                 annot=True,
@@ -368,7 +264,5 @@ if cl_input == 'binary':
     plt.show()
 
     # save model
-    pickle_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/data/pickle'
     with open(os.path.join(pickle_path, 'binary_clf.pickle'), 'wb') as output:
-        pickle.dump(binary_clf, output)
-'''
+        pickle.dump(clf, output)

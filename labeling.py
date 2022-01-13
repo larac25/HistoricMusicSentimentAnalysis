@@ -24,7 +24,7 @@ def split_data():
     # extract 50% of the new corpus for each labeling process
     # new folders: word2vec & fasttext
     input_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/'
-    split_files = random.sample(os.listdir(input_folder), 2629)
+    split_files = random.sample(os.listdir(input_folder), 150) # ATTENTION changed number
     wv_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/word2vec/'
     ft_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/fasttext/'
 
@@ -62,12 +62,37 @@ def label_data():
         data = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/word2vec/'
         label = pd.read_pickle('/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/label_wv.pkl')
 
+        # sentiment codes from Emotionlexicon with Word2Vec Embeddings
+        sentiment_codes = {
+            'anmuthig': 'p',
+            'bruetend': 'n',
+            'duester': 'n',
+            'ergreifend': 'p',
+            'feurig': 'p',
+            'leidenschaftlich': 'p',
+            'trotzig': 'n',
+            'trueb': 'n',
+            'wild': 'n'
+        }
+
     elif label_inpput == 'ft':
 
         # load fasttext data and fasttext generated emotion lexicon
         data = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/fasttext/'
         label = pd.read_pickle('/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/label_ft.pkl')
 
+        # sentiment codes from Emotionslexicon with FastText Embeddings
+        sentiment_codes = {
+            'anmuthig': 'p',
+            'bruetend': 'n',
+            'duester': 'p',
+            'ergreifend': 'n',
+            'feurig': 'p',
+            'leidenschaftlich': 'p',
+            'trotzig': 'n',
+            'trueb': 'n',
+            'wild': 'n'
+        }
 
     # read csv files as stream
     for root_name, dir_n, csv_files in os.walk(data):
@@ -95,6 +120,10 @@ def label_data():
                                 # update column 'label' with seed word category
                                 f_df.loc[index, 'label'] = columnIndex
 
+                # label mapping
+                f_df['sentiment'] = f_df['label']
+                f_df = f_df.replace({'sentiment': sentiment_codes})
+
                 with open(os.path.join(root_name, f), 'w') as labelled_file:
                     f_df.to_csv(labelled_file)
 
@@ -111,7 +140,7 @@ if len(os.listdir(csv_path)) == 0:
         file_number = len(files)
         print('found', file_number, 'files')
 
-        files = random.sample(os.listdir(raw_data), 5258)
+        files = random.sample(os.listdir(raw_data), 300) # ATTENTION: changed number
 
         for filename in files:
             # create output directory and filename for processed files
