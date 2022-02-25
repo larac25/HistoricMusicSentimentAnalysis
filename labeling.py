@@ -19,12 +19,11 @@ def outp_dir():
     return outp_path
 
 
-# split data because of RAM Issues
+# split data for different labelling
 def split_data():
-    # extract 50% of the new corpus for each labeling process
     # new folders: word2vec & fasttext
     input_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/'
-    split_files = random.sample(os.listdir(input_folder), 150) # ATTENTION changed number
+
     wv_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/word2vec/'
     ft_folder = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/fasttext/'
 
@@ -32,19 +31,20 @@ def split_data():
     if not os.path.exists(wv_folder):
         os.makedirs(wv_folder)
 
-        # move randomly selected files to new folder
-        for wv_files in split_files:
-            old_path = os.path.join(input_folder, wv_files)
-            shutil.move(old_path, wv_folder)
+        # move copied files to new folder
+        src_files = os.listdir(input_folder)
+        for wv_files in src_files:
+            full_filename = os.path.join(input_folder, wv_files)
+            if os.path.isfile(full_filename):
+                shutil.copy(full_filename, wv_folder)
 
     # check if ft_folder already exists
     if not os.path.exists(ft_folder):
         os.makedirs(ft_folder)
 
-        # these are the files left from the splitting
         ft_files = os.listdir(input_folder)
 
-        # move all csv files to new test folder
+        # move all csv files to ft_folder
         for test in filter(lambda test: test.endswith('.csv'), ft_files):  # only consider csv
             # --> otherwise the wv_folder is moved, too
             old_p = os.path.join(input_folder, test)
@@ -128,7 +128,7 @@ def label_data():
                     f_df.to_csv(labelled_file)
 
 
-# read data as stream and convert 50% of it to csv (only 50% because of RAM issues)
+# read data as stream and convert 10% of it to csv (only 10% because of RAM issues)
 raw_data = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/prep_files/'
 csv_path = outp_dir()
 
@@ -140,7 +140,7 @@ if len(os.listdir(csv_path)) == 0:
         file_number = len(files)
         print('found', file_number, 'files')
 
-        files = random.sample(os.listdir(raw_data), 300) # ATTENTION: changed number
+        files = random.sample(os.listdir(raw_data), 1050)  # 10 % of original dataset
 
         for filename in files:
             # create output directory and filename for processed files

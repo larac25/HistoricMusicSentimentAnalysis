@@ -58,6 +58,8 @@ def main():
         print(f"word #{index}/{len(ft_vocab.index_to_key)} is {word}")
 
     # fasttext model params:
+    # min_count = ignores all words with total frequency lower than this
+    # vector_size = dimensionality of the word vectors
 
     # saving the model
     ft_model.wv.save(fname_fasttext)

@@ -15,7 +15,6 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer, T
 from sklearn.model_selection import train_test_split, GridSearchCV
 
 #Importieren der Klassifizierungs Algorithmen
-from sklearn.svm import SVC
 from sklearn.svm import LinearSVC
 
 clf_input = input('which labelled data? wv = labelled data with word2vec embeddings; ft = labelled data with fasttext embeddings')
@@ -23,15 +22,12 @@ clf_input = input('which labelled data? wv = labelled data with word2vec embeddi
 if clf_input == 'wv':
 
     training_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/word2vec/'
-    #test_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/word2vec/'
 
 elif clf_input == 'ft':
 
     training_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/fasttext/'
-    #test_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/classifier/fasttext/'
 
 final_train_df = os.path.join(training_path, 'train_df.csv')
-#final_test_df = os.path.join(test_path, 'test_df.csv')
 
 if not os.path.exists(final_train_df):
 
@@ -52,20 +48,6 @@ if not os.path.exists(final_train_df):
         # save final dataframe for training
         with open(os.path.join(training_path, 'train_df.csv'), 'w') as out_train_df:
             train_df.to_csv(out_train_df)
-
-        '''
-        test_list = []
-
-        for test in os.listdir(test_path):
-            te = pd.read_csv(os.path.join(test_path, test), index_col=0)
-            test_list.append(te)
-
-        # final test dataframe which includes all csv files from test files
-        test_df = pd.concat(test_list)
-        
-        with open(os.path.join(test_path, 'test_df.csv'), 'w') as out_test_df:
-            test_df.to_csv(out_test_df)
-        '''
 
     if data_size == 'y':
 
@@ -92,7 +74,6 @@ else:
     print('The final dataframes have already been created. Processing with label coding..')
 
     train_df = pd.read_csv(final_train_df, index_col=0)
-#    test_df = pd.read_csv(final_test_df)
 
 
 viz = input('do you want to plot the visualisation? y / n')
@@ -169,7 +150,7 @@ if cl_input == 'sentiment':
     x_train, x_test, y_train, y_test = train_test_split(train_df['text'], train_df['label_code'],
                                                         test_size=0.2, shuffle=True, random_state=10)
 
-    clf = GridSearchCV(text_clf, tuned_parameters, cv=10)
+    clf = GridSearchCV(text_clf, tuned_parameters, cv=10, n_jobs=2)
 
     # Modell trainieren
     clf.fit(x_train, y_train)
@@ -234,7 +215,7 @@ if cl_input == 'binary':
     x_train, x_test, y_train, y_test = train_test_split(train_df['text'], train_df['label_code'],
                                                         test_size=0.2, shuffle=True, random_state=10)
 
-    clf = GridSearchCV(text_clf, tuned_parameters, cv=10)
+    clf = GridSearchCV(text_clf, tuned_parameters, cv=10, n_jobs=2)
 
     # Modell trainieren
     clf.fit(x_train, y_train)

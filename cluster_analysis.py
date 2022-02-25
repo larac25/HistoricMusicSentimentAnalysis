@@ -12,7 +12,7 @@ wv_label = pd.read_pickle('/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/
 wv_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/label_wv'
 wv_keyed_vectors = gensim.models.KeyedVectors.load_word2vec_format(wv_path)
 
-#load fasttext files
+# load fasttext files
 ft_label = pd.read_pickle('/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/label_ft.pkl')
 ft_path = '/Users/Lara/Desktop/Uni/Info_4/Masterarbeit/DATA/HMP/anno_corpus/corpus/label/label_ft'
 ft_keyed_vectors = gensim.models.KeyedVectors.load_word2vec_format(ft_path)
